@@ -2,6 +2,7 @@ use std::fmt;
 use crate::instruction::i_struct::IStruct;
 use colored::*;
 
+
 const INSTRUCTION_ADDED : &str  = "Instruction succesfully added";
 
 pub struct QuantumCircuit<'a>
@@ -47,15 +48,40 @@ impl <'a> QuantumCircuit<'a> {
 		}
 	}
 
-	pub fn cx(&mut self, elements : &'a[usize]) -> Option<&str>{
-		if elements.iter().any(|&x| x >= self.qubits)
+	pub fn cx(&mut self, control : usize, target : usize) -> Option<&str>{
+		if control >= self.qubits || target >= self.qubits
 		{
 			panic!("{}","Error: tried to apply cx gate to non existent qbits.\n".red())
-		} else {
-			self.instructions.push(IStruct::H(elements));
+		} else if control == target {
+			panic!("{}","Error: tried to apply cx gate to same qbits.\n".red())
+		} 
+		else {
+			self.instructions.push(IStruct::CX(control, target));
 			Some(INSTRUCTION_ADDED)
 		}
 	}
+
+	pub fn y(&mut self, elements : &'a[usize]) -> Option<&str>{
+		if elements.iter().any(|&x| x >= self.qubits)
+		{
+			panic!("{}","Error: tried to apply Y gate to non existent qbits.\n".red())
+		} else {
+			self.instructions.push(IStruct::Y(elements));
+			Some(INSTRUCTION_ADDED)
+		}
+	}
+
+	pub fn z(&mut self, elements : &'a[usize]) -> Option<&str>{
+		if elements.iter().any(|&x| x >= self.qubits)
+		{
+			panic!("{}","Error: tried to apply Z gate to non existent qbits.\n".red())
+		} else {
+			self.instructions.push(IStruct::X(elements));
+			Some(INSTRUCTION_ADDED)
+		}
+	}
+
+
 
 
 }
@@ -68,7 +94,7 @@ impl <'a>fmt::Display for QuantumCircuit<'a>{
 		writeln!(f, "nb of quantum bits {}, nb of classical bits {}.", self.qubits.to_string().yellow(), self.clbits.to_string().yellow())?;
 		writeln!(f, "{}", "Liste of instructions:".bright_green())?;
 		for elements in &self.instructions {
-			writeln!(f, "{}", elements.to_string().green())?
+			writeln!(f, "{}", elements.to_string())?
 		}
 		Ok(())
 	}
