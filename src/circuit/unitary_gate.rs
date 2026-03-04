@@ -1,7 +1,7 @@
 use num::{complex::Complex32};
 use nalgebra::DMatrix;
 use colored::*;
-use std::{fmt, vec};
+use std::{fmt};
 use crate::instruction::to_gate::ToGate;
 use crate::instruction::i_struct::IStruct;
 
@@ -37,8 +37,8 @@ impl UnitaryGate {
 		Ok(UnitaryGate { qubits: (qubits), matrix : (mat) })
 	}	
 	
-	fn to_u_gate<'a>(&'a self, position :usize, label : &'a str) -> IStruct<'a> {
-		IStruct::GATE(position, vec![IStruct::U(&self.matrix)], label)
+	fn to_u_gate(&self, position :Vec<usize>, label : String) -> IStruct {
+		IStruct::GATE{position, instruction: vec![IStruct::U{matrix: self.matrix.clone(), target: Vec::new()}], label: label}
 	}
 
 
@@ -54,12 +54,13 @@ impl fmt::Display for UnitaryGate{
 
 }	
 
-impl <'a>ToGate<'a> for UnitaryGate {
+impl ToGate for UnitaryGate {
 	fn get_size(&self)->usize {
 		self.qubits
 	}
 
-	fn to_gate(&'a self, position :usize, label : &'a str) -> IStruct<'a> {
+	fn to_gate(&self, position :Vec<usize>, label : Option<String>) -> IStruct {
+		let label = label.unwrap_or(String::from("Gate"));
 		self.to_u_gate(position, label)
 	}
 
