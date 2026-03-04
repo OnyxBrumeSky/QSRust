@@ -1,10 +1,12 @@
 use std::fmt;
 use crate::instruction::i_struct::IStruct;
+use crate::instruction::to_gate::ToGate;
 use colored::*;
 
 
 const INSTRUCTION_ADDED : &str  = "Instruction succesfully added";
 
+#[derive(Clone)]
 pub struct QuantumCircuit<'a>
 {
 	qubits : usize,
@@ -28,59 +30,67 @@ impl <'a> QuantumCircuit<'a> {
 		self.clbits
 	}
 
-	pub fn h(&mut self, elements : &'a[usize]) -> Option<&str>{
+	pub fn h(&mut self, elements : &'a[usize]) -> Result<&str, ColoredString> {
 		if elements.iter().any(|&x| x >= self.qubits)
 		{
-			panic!("{}","Error: tried to apply H gate to non existent qbits.\n".red())
+			Err("Error: tried to apply H gate to non existent qbits.\n".red())
 		} else {
 			self.instructions.push(IStruct::H(elements));
-			Some(INSTRUCTION_ADDED)
+			Ok(INSTRUCTION_ADDED)
 		}
 	}
 
-	pub fn x(&mut self, elements : &'a[usize]) -> Option<&str>{
+	pub fn x(&mut self, elements : &'a[usize]) -> Result<&str, ColoredString> {
 		if elements.iter().any(|&x| x >= self.qubits)
 		{
-			panic!("{}","Error: tried to apply X gate to non existent qbits.\n".red())
+			Err("Error: tried to apply X gate to non existent qbits.\n".red())
 		} else {
 			self.instructions.push(IStruct::X(elements));
-			Some(INSTRUCTION_ADDED)
+			Ok(INSTRUCTION_ADDED)
 		}
 	}
 
-	pub fn cx(&mut self, control : usize, target : usize) -> Option<&str>{
+	pub fn cx(&mut self, control : usize, target : usize) -> Result<&str, ColoredString>{
 		if control >= self.qubits || target >= self.qubits
 		{
-			panic!("{}","Error: tried to apply cx gate to non existent qbits.\n".red())
+			Err("Error: tried to apply cx gate to non existent qbits.\n".red())
 		} else if control == target {
-			panic!("{}","Error: tried to apply cx gate to same qbits.\n".red())
+			Err("Error: tried to apply cx gate to same qbits.\n".red())
 		} 
 		else {
 			self.instructions.push(IStruct::CX(control, target));
-			Some(INSTRUCTION_ADDED)
+			Ok(INSTRUCTION_ADDED)
 		}
 	}
 
-	pub fn y(&mut self, elements : &'a[usize]) -> Option<&str>{
+	pub fn y(&mut self, elements : &'a[usize]) -> Result<&str, ColoredString>{
 		if elements.iter().any(|&x| x >= self.qubits)
 		{
-			panic!("{}","Error: tried to apply Y gate to non existent qbits.\n".red())
+			Err("Error: tried to apply Y gate to non existent qbits.\n".red())
 		} else {
 			self.instructions.push(IStruct::Y(elements));
-			Some(INSTRUCTION_ADDED)
+			Ok(INSTRUCTION_ADDED)
 		}
 	}
 
-	pub fn z(&mut self, elements : &'a[usize]) -> Option<&str>{
+	pub fn z(&mut self, elements : &'a[usize]) ->  Result<&str, ColoredString>{
 		if elements.iter().any(|&x| x >= self.qubits)
 		{
-			panic!("{}","Error: tried to apply Z gate to non existent qbits.\n".red())
+			Err("Error: tried to apply Z gate to non existent qbits.\n".red())
 		} else {
 			self.instructions.push(IStruct::X(elements));
-			Some(INSTRUCTION_ADDED)
+			Ok(INSTRUCTION_ADDED)
 		}
 	}
 
+	pub fn append<T: ToGate<'a>>(&mut self, gate : &'a T, position : usize, label : &'a str) -> Result<&Self, ColoredString> {
+
+		if position >= self.qubits || gate.get_size() + position > self.qubits {
+			return Err("Error: tried to apply a gate that doesn't fit the circuit.\n".red());
+		}
+		self.instructions.push(gate.to_gate(position, label));
+		Ok(self)
+	}
 
 
 
@@ -99,3 +109,15 @@ impl <'a>fmt::Display for QuantumCircuit<'a>{
 		Ok(())
 	}
 }
+
+impl <'a>ToGate<'a> for QuantumCircuit<'a> {
+	fn to_gate(&'a self, position : usize, label: &'a str) -> IStruct<'a> {
+		IStruct::GATE(position, self.instructions.clone(), label)
+	}
+
+	fn get_size(&self)->usize {
+		self.qubits
+	}
+}
+
+

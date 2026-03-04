@@ -1,15 +1,17 @@
 use std::fmt;
-
+use colored::Colorize;
+use nalgebra::DMatrix;
 use num::complex::Complex32;
 
-
+#[derive(Clone)]
 pub enum IStruct<'a> {
 	H(&'a[usize]),
 	X(&'a[usize]),
 	CX(usize, usize),
 	Y(&'a[usize]),
 	Z(&'a[usize]),
-	U(&'a[Complex32]),
+	U(&'a DMatrix<Complex32>),
+	GATE(usize, Vec<IStruct<'a>>, &'a str),
 	ANY()
 }
 
@@ -32,7 +34,14 @@ impl <'a>fmt::Display for IStruct<'a>{
 				write!(f, "X gate is applied to the qbit(s) {:?}", qbits)
 			}
 			IStruct::U(mat) =>{
-				write!(f, "U gate is applied to the qbit(s) {:?}", mat)
+				write!(f, "U gate : {}", mat)
+			}
+			IStruct::GATE(position, instruction, label) =>{
+				writeln!(f, "Gate {} is applied to the circuit at position {}", label.blue(), position)?;
+				for elements in instruction {
+					writeln!(f, "{}", elements)?;
+				}
+				Ok(())
 			}
 			_ => {write!(f, "Display trait to gate is not implemented")}
 		}
