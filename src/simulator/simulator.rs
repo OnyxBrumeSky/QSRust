@@ -1,8 +1,8 @@
-use num::{complex::Complex32};
+use num::complex::Complex32;
 
 pub struct QuantumState {
-    qubits : usize,
-    state : Vec<Complex32>,
+    _qubits : usize,
+    _state : Vec<Complex32>,
 }
 
 

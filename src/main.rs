@@ -1,7 +1,6 @@
 
 use qc::circuit::quantum_circuit::QuantumCircuit;
-use qc::circuit::unitary_gate::UnitaryGate;
-use num::{complex::Complex32};
+
 use std::error::Error;
 
 fn main()-> Result<(), Box<dyn Error>> {
