@@ -40,6 +40,10 @@ impl QuantumCircuit {
         self.qubits
     }
 
+    pub fn get_instructions(&self) -> &Vec<IStruct> {
+        &self.instructions
+    }
+
     /// Retourne le nombre de bits classiques dans le circuit.
     pub fn get_cl_bits(&self) -> usize {
         self.clbits
@@ -197,7 +201,7 @@ impl QuantumCircuit {
     /// # Erreurs
     /// Vérifie que la porte peut s'appliquer dans le circuit.
     pub fn append<T: ToGate + QLogic>(&mut self, gate : &T, position : Option<Vec<usize>>, label : Option<String>) -> Result<&Self, ColoredString> {
-        let position = position.unwrap_or_else(|| (0..self.qubits).collect());
+        let position = position.unwrap_or_else(|| (0..gate.get_size()).collect());
         if position.iter().any(|&x| x >= self.qubits) || gate.get_size() > self.qubits || position.len() > gate.get_size(){
             return Err("tried to apply a gate that doesn't fit the circuit.\n".red());
         }
@@ -339,5 +343,6 @@ impl QLogic for QuantumCircuit {
         self.qubits
     }
 }
+
 
 

@@ -9,3 +9,4 @@
 pub mod circuit;
 pub mod simulator;
 pub mod	instruction;
+pub mod api;

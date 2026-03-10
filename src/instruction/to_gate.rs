@@ -17,3 +17,5 @@ pub trait ToGate {
     /// Une instance de `IStruct` représentant l'instruction générée.
     fn to_gate(&self, position: Vec<usize>, label: Option<String>) -> IStruct;
 }
+
+

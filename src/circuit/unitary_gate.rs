@@ -76,7 +76,7 @@ impl fmt::Display for UnitaryGate {
     /// Affiche la matrice unitaire et le nombre de qubits nécessaires.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.matrix)?;
-        write!(f, "Number of qbits needed : {}", self.qubits)?;
+        writeln!(f, "Number of qbits needed : {}", self.qubits)?;
         Ok(())
     }
 }
@@ -95,10 +95,10 @@ impl ToGate for UnitaryGate {
     fn to_gate(&self, position: Vec<usize>, label: Option<String>) -> IStruct {
         let label = label.unwrap_or(String::from("Gate"));
         IStruct::GATE {
-            position,
+            position : position.clone(),
             instruction: vec![Box::new(IStruct::U {
                 matrix: self.matrix.clone(),
-                target: Vec::new(),
+                target: position.clone(),
             })],
             label,
         }

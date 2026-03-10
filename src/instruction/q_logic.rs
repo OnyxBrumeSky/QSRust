@@ -12,3 +12,4 @@ pub trait QLogic {
     /// * `usize` - La taille ou la dimension de l'objet.
     fn get_size(&self) -> usize;
 }
+
