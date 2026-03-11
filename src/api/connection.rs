@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -98,6 +100,11 @@ impl ServiceBuilder {
     }
 }
 
+#[derive(Deserialize)]
+struct BackendsResponse {
+    backends: Vec<Backend>
+}
+
 impl Service {
 
     pub fn builder() -> ServiceBuilder {
@@ -110,19 +117,27 @@ impl Service {
         }
     }
 
+
+
     pub async fn get_backends(&mut self) -> Result<BackendManager, reqwest::Error> {
 
         let url = format!("{}/backends", self.url);
-
+    
         let response = self.http
             .get(url)
             .bearer_auth(&self.token)
             .send()
             .await?;
-
-        let backends: Vec<Backend> = response.json().await?;
-
-        Ok(BackendManager { backends })
+    
+        let status = response.status();
+        let text = response.text().await?;
+    
+        println!("status: {}", status);
+        println!("body: {}", text);
+    
+        let backends: BackendsResponse = serde_json::from_str(&text).unwrap();
+    
+        Ok(BackendManager { backends : backends.backends })
     }
 
     pub fn use_backend(&mut self, backend : Backend) {
@@ -175,4 +190,22 @@ impl BackendManager {
             .min_by_key(|b| b.pending_jobs.unwrap_or(u32::MAX))
     }
 
+}
+
+
+
+impl Display for Backend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Backend: {}, Qubits: {}, Simulator: {}, Status: {}", self.name, self.num_qubits, self.simulator, self.status)
+    }
+}
+
+
+impl Display for BackendManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for backend in &self.backends {
+            writeln!(f, "{}", backend)?;
+        }
+        Ok(())
+    }
 }
