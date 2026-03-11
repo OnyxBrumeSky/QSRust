@@ -33,5 +33,8 @@ fn main()-> Result<(), Box<dyn Error>> {
 	print!("Quantum Circuit:\n{}", circuit);
 	let asm = circuit.to_qasm();
 	print!("{}", asm);
+
+	
+
 	Ok(())
 }
