@@ -1,7 +1,8 @@
-use std::fmt::Display;
-
+use std::fmt::{format, Display};
+use std::error::Error;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+
 
 pub enum Channel {
     IbmQuantumPlatform,
@@ -22,6 +23,27 @@ pub struct Backend {
     status: String,
 }
 
+
+#[derive(Deserialize)]
+struct  IAM {
+    access_token : String,
+    refresh_token : String,
+    expires_in : u64,
+    expiration : u64,
+}
+
+
+#[derive(Deserialize)]
+struct InstancesResponse {
+    rows_count: u32,
+    resources: Vec<Resource>,
+}
+
+#[derive(Deserialize)]
+struct Resource {
+    crn: String,
+}
+
 pub struct Service {
     channel : Channel,
     token: String,
@@ -30,7 +52,7 @@ pub struct Service {
     instance : String,
     region : String,
     http : reqwest::Client,
-
+    iam : IAM,
 }
 
 pub struct  ServiceBuilder {
@@ -60,6 +82,17 @@ impl Default for Backend {
     }
 }
 
+impl Default for IAM {
+    fn default() -> Self {
+        IAM {
+            access_token: String::new(),
+            refresh_token: String::new(),
+            expires_in: 0,
+            expiration: 0,
+        }
+    }
+}
+
 
 impl ServiceBuilder {
     pub fn token(mut self, token: String) -> Self {
@@ -77,26 +110,52 @@ impl ServiceBuilder {
         self
     }
 
-    pub fn instance(mut self, instance: String) -> Self {
-        self.instance = Some(instance);
-        self
-    }
-
     pub fn region(mut self, region: String) -> Self {
         self.region = Some(region);
         self
     }
 
-    pub fn build(self) -> Service {
-        Service {
-            token: self.token.unwrap_or_else(|| "no_token".to_string()),
+    pub async fn build(self) -> Result<Service,Box<dyn Error>> {
+
+        let token = self.token.clone().unwrap_or_else(|| "no_token".to_string());
+        let http = Client::new();
+    
+        let param = [("grant_type", "urn:ibm:params:oauth:grant-type:apikey"), ("apikey", &token)];
+
+        let response = http
+        .post("https://iam.cloud.ibm.com/identity/token")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .form(&param)
+        .send()
+        .await?
+        .json::<IAM>()
+        .await?;
+
+
+        let instance = http
+        .get(" https://resource-controller.cloud.ibm.com/v2/resource_instances")
+        .bearer_auth(&response.access_token)
+        .send()
+        .await?
+        .json::<InstancesResponse>()
+        .await?;
+        
+        if instance.rows_count == 0 {
+            return Err("No resource instance found for the provided API key.".into());
+        }
+
+        let ist = Service {
+            token,
             channel: self.channel.unwrap_or(Channel::IbmQuantumPlatform),
-            url: self.url.unwrap_or_else(|| "https://quantum.cloud.ibm.com/api".to_string()),
-            instance: self.instance.unwrap_or_default(),
+            url: self.url.unwrap_or_else(|| "https://quantum-computing.ibm.com/api".to_string()),
+            instance: instance.resources[0].crn.clone(),
             region: self.region.unwrap_or_else(|| "us-east".to_string()),
             backends: Backend::default(),
-            http: Client::new(),
-        }
+            http,
+            iam : response,
+        };
+
+        Ok(ist)
     }
 }
 
@@ -119,25 +178,32 @@ impl Service {
 
 
 
-    pub async fn get_backends(&mut self) -> Result<BackendManager, reqwest::Error> {
+    pub async fn get_backends(&self) -> Result<BackendManager, reqwest::Error> {
 
-        let url = format!("{}/backends", self.url);
+        let url = format!(
+            "{}/Backends",
+            self.url
+        );
     
+        println!("Fetching backends from URL: {}", url);
+
         let response = self.http
             .get(url)
-            .bearer_auth(&self.token)
+            //.bearer_auth(&self.iam.access_token)
+            .header("accept", "application/json")
+            .header("Authorization", format!("Bearer {}", &self.iam.access_token))
+            .header("Service-CRN:", &self.instance)
+            .header("IBM-API-Version:", "2026-02-15")
             .send()
             .await?;
     
-        let status = response.status();
-        let text = response.text().await?;
-    
-        println!("status: {}", status);
-        println!("body: {}", text);
-    
-        let backends: BackendsResponse = serde_json::from_str(&text).unwrap();
-    
-        Ok(BackendManager { backends : backends.backends })
+        println!("Response status: {} with url : {}", response.status(), response.url());
+        
+        let backends: BackendsResponse = response.json().await?;
+
+        Ok(BackendManager {
+            backends: backends.backends
+         })
     }
 
     pub fn use_backend(&mut self, backend : Backend) {
@@ -153,10 +219,11 @@ impl Default for Service {
             channel: Channel::IbmQuantumPlatform,
             token: String::new(),
             backends: Backend::default(),
-            url: "https://quantum.cloud.ibm.com/api".to_string(),
+            url: "https://quantum.cloud.ibm.com/api/v1".to_string(),
             instance: String::new(),
             region: "us-east".to_string(),
             http: Client::new(),
+            iam: IAM::default(),
         }
     }
 }
