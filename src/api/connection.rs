@@ -1,7 +1,8 @@
-use std::fmt::{format, Display};
+use std::fmt::{Display};
 use std::error::Error;
-use reqwest::Client;
+use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
+use reqwest::header::{ACCEPT, AUTHORIZATION};
 
 
 pub enum Channel {
@@ -12,15 +13,24 @@ pub enum Channel {
 
 
 #[derive(Deserialize, Serialize)]
-pub struct Backend {
-    name: String,
-    num_qubits: u32,
-    simulator: bool,
-    basis_gates: Vec<String>,
-    coupling_map: Vec<(u32, u32)>,
-    max_shots: u32,
-    pending_jobs: Option<u32>,
-    status: String,
+pub struct Device {
+    pub name: String,
+    pub qubits: u32,
+    pub queue_length: u32,
+    pub status: DeviceStatus,
+    pub processor_type : Option<Processortype>
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Processortype {
+    pub family: String,
+    pub revision: String,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct DeviceStatus {
+    pub name: String,
+    pub reason: String,
 }
 
 
@@ -47,7 +57,7 @@ struct Resource {
 pub struct Service {
     channel : Channel,
     token: String,
-    backends : Backend,
+    backends : Device,
     url : String,
     instance : String,
     region : String,
@@ -63,21 +73,23 @@ pub struct  ServiceBuilder {
     region: Option<String>,
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct BackendManager {
-    backends: Vec<Backend>,
+    pub devices: Vec<Device>,
 }
 
-impl Default for Backend {
+
+impl Default for Device {
     fn default() -> Self {
-        Backend {
+        Device {
             name: String::from("default_backend"),
-            num_qubits: 0,
-            simulator: false,
-            basis_gates: Vec::new(),
-            coupling_map: Vec::new(),
-            max_shots: 0,
-            pending_jobs: None,
-            status: String::new(),
+            qubits: 0,
+            queue_length: 0,
+            status: DeviceStatus {
+                name: String::new(),
+                reason: String::new(),
+            },
+            processor_type: None,
         }
     }
 }
@@ -118,7 +130,7 @@ impl ServiceBuilder {
     pub async fn build(self) -> Result<Service,Box<dyn Error>> {
 
         let token = self.token.clone().unwrap_or_else(|| "no_token".to_string());
-        let http = Client::new();
+        let http = Client::builder().user_agent("quantum-rust-client/0.1 (reqwest)").build()?;
     
         let param = [("grant_type", "urn:ibm:params:oauth:grant-type:apikey"), ("apikey", &token)];
 
@@ -133,7 +145,7 @@ impl ServiceBuilder {
 
 
         let instance = http
-        .get(" https://resource-controller.cloud.ibm.com/v2/resource_instances")
+        .get("https://resource-controller.cloud.ibm.com/v2/resource_instances")
         .bearer_auth(&response.access_token)
         .send()
         .await?
@@ -150,7 +162,7 @@ impl ServiceBuilder {
             url: self.url.unwrap_or_else(|| "https://quantum-computing.ibm.com/api".to_string()),
             instance: instance.resources[0].crn.clone(),
             region: self.region.unwrap_or_else(|| "us-east".to_string()),
-            backends: Backend::default(),
+            backends: Device::default(),
             http,
             iam : response,
         };
@@ -161,7 +173,7 @@ impl ServiceBuilder {
 
 #[derive(Deserialize)]
 struct BackendsResponse {
-    backends: Vec<Backend>
+    devices: Vec<Device>
 }
 
 impl Service {
@@ -180,33 +192,21 @@ impl Service {
 
     pub async fn get_backends(&self) -> Result<BackendManager, reqwest::Error> {
 
-        let url = format!(
-            "{}/Backends",
-            self.url
-        );
-    
-        println!("Fetching backends from URL: {}", url);
-
         let response = self.http
-            .get(url)
-            //.bearer_auth(&self.iam.access_token)
-            .header("accept", "application/json")
-            .header("Authorization", format!("Bearer {}", &self.iam.access_token))
-            .header("Service-CRN:", &self.instance)
-            .header("IBM-API-Version:", "2026-02-15")
-            .send()
-            .await?;
-    
-        println!("Response status: {} with url : {}", response.status(), response.url());
-        
+            .get("https://quantum.cloud.ibm.com/api/v1/backends")
+            .header(ACCEPT, "application/json")
+            .header(AUTHORIZATION, format!("Bearer {}", &self.iam.access_token))
+            .header("Service-CRN", format!("{}",&self.instance))
+            .header("IBM-API-Version", "2026-02-15").send().await?.error_for_status()?;
+
         let backends: BackendsResponse = response.json().await?;
 
         Ok(BackendManager {
-            backends: backends.backends
+            devices : backends.devices,
          })
     }
 
-    pub fn use_backend(&mut self, backend : Backend) {
+    pub fn use_backend(&mut self, backend : Device) {
         self.backends = backend;
     }
 
@@ -218,7 +218,7 @@ impl Default for Service {
         Service {
             channel: Channel::IbmQuantumPlatform,
             token: String::new(),
-            backends: Backend::default(),
+            backends: Device::default(),
             url: "https://quantum.cloud.ibm.com/api/v1".to_string(),
             instance: String::new(),
             region: "us-east".to_string(),
@@ -232,45 +232,46 @@ impl Default for Service {
 
 impl BackendManager {
 
-    pub fn list(&self) -> &Vec<Backend> {
-        &self.backends
+    pub fn list(&self) -> &Vec<Device> {
+        &self.devices
     }
 
-    pub fn simulators(&self) -> Vec<&Backend> {
-        self.backends
+    pub fn simulators(&self) -> Vec<&Device> {
+        self.devices
             .iter()
-            .filter(|b| b.simulator)
+            .filter(|b| b.processor_type.is_none())
             .collect()
     }
 
-    pub fn real(&self) -> Vec<&Backend> {
-        self.backends
+    pub fn real(&self) -> Vec<&Device> {
+        self.devices
             .iter()
-            .filter(|b| !b.simulator)
+            .filter(|b| b.processor_type.is_some())
             .collect()
     }
 
-    pub fn least_busy(&self) -> Option<&Backend> {
-        self.backends
-            .iter()
-            .filter(|b| !b.simulator)
-            .min_by_key(|b| b.pending_jobs.unwrap_or(u32::MAX))
+    pub fn least_busy(&self) -> Option<&Device> {
+        self.devices
+        .iter()
+        .filter(|d| d.status.name == "online")
+        .min_by_key(|d| d.queue_length)
+        
     }
 
 }
 
 
 
-impl Display for Backend {
+impl Display for Device {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Backend: {}, Qubits: {}, Simulator: {}, Status: {}", self.name, self.num_qubits, self.simulator, self.status)
+        write!(f, "Backend: {}, Qubits: {}, Simulator: {}, Status: {}", self.name, self.qubits, self.processor_type.is_none(), self.status.name)
     }
 }
 
 
 impl Display for BackendManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for backend in &self.backends {
+        for backend in &self.devices {
             writeln!(f, "{}", backend)?;
         }
         Ok(())
