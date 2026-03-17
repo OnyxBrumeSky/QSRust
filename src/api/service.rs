@@ -6,6 +6,7 @@ use crate::api::backend_manager::{BackendManager, BackendsResponse};
 use std::error::Error;
 use reqwest::Client;
 use reqwest::header::{ACCEPT, AUTHORIZATION};
+use reqwest::Response;
 
 pub struct Service {
     channel : Channel,
@@ -14,7 +15,7 @@ pub struct Service {
     url : String,
     instance : String,
     region : String,
-    http : reqwest::Client,
+    http : Client,
     iam : IAM,
 }
 
@@ -25,9 +26,6 @@ pub struct  ServiceBuilder {
     instance: Option<String>,
     region: Option<String>,
 }
-
-
-
 
 
 impl ServiceBuilder {
@@ -109,15 +107,20 @@ impl Service {
     }
 
 
+    pub async fn get(&self, url : &str) -> Result<Response, reqwest::Error>{
+        self.http
+        .get(url)
+        .header(ACCEPT, "application/json")
+        .header(AUTHORIZATION, format!("Bearer {}", &self.iam.access_token))
+        .header("Service-CRN", format!("{}",&self.instance))
+        .header("IBM-API-Version", "2026-02-15")
+        .send().await?.error_for_status()
+    }
+
 
     pub async fn get_backends(&self) -> Result<BackendManager, reqwest::Error> {
 
-        let response = self.http
-            .get("https://quantum.cloud.ibm.com/api/v1/backends")
-            .header(ACCEPT, "application/json")
-            .header(AUTHORIZATION, format!("Bearer {}", &self.iam.access_token))
-            .header("Service-CRN", format!("{}",&self.instance))
-            .header("IBM-API-Version", "2026-02-15").send().await?.error_for_status()?;
+        let response = self.get("https://quantum.cloud.ibm.com/api/v1/backends").await?;
 
         let backends: BackendsResponse = response.json().await?;
 
