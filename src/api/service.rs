@@ -1,58 +1,11 @@
-use std::fmt::{Display};
+use crate::api::iam::IAM;
+use crate::api::device::Device;
+use crate::api::structs::Channel;
+use crate::api::structs::InstancesResponse;
+use crate::api::backend_manager::{BackendManager, BackendsResponse};
 use std::error::Error;
-use reqwest::{Client, Response};
-use serde::{Deserialize, Serialize};
+use reqwest::Client;
 use reqwest::header::{ACCEPT, AUTHORIZATION};
-
-
-pub enum Channel {
-    IbmQuantumPlatform,
-    IbmCloud,
-    Local,
-}
-
-
-#[derive(Deserialize, Serialize)]
-pub struct Device {
-    pub name: String,
-    pub qubits: u32,
-    pub queue_length: u32,
-    pub status: DeviceStatus,
-    pub processor_type : Option<Processortype>
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct Processortype {
-    pub family: String,
-    pub revision: String,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct DeviceStatus {
-    pub name: String,
-    pub reason: String,
-}
-
-
-#[derive(Deserialize)]
-struct  IAM {
-    access_token : String,
-    refresh_token : String,
-    expires_in : u64,
-    expiration : u64,
-}
-
-
-#[derive(Deserialize)]
-struct InstancesResponse {
-    rows_count: u32,
-    resources: Vec<Resource>,
-}
-
-#[derive(Deserialize)]
-struct Resource {
-    crn: String,
-}
 
 pub struct Service {
     channel : Channel,
@@ -73,37 +26,8 @@ pub struct  ServiceBuilder {
     region: Option<String>,
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct BackendManager {
-    pub devices: Vec<Device>,
-}
 
 
-impl Default for Device {
-    fn default() -> Self {
-        Device {
-            name: String::from("default_backend"),
-            qubits: 0,
-            queue_length: 0,
-            status: DeviceStatus {
-                name: String::new(),
-                reason: String::new(),
-            },
-            processor_type: None,
-        }
-    }
-}
-
-impl Default for IAM {
-    fn default() -> Self {
-        IAM {
-            access_token: String::new(),
-            refresh_token: String::new(),
-            expires_in: 0,
-            expiration: 0,
-        }
-    }
-}
 
 
 impl ServiceBuilder {
@@ -171,10 +95,6 @@ impl ServiceBuilder {
     }
 }
 
-#[derive(Deserialize)]
-struct BackendsResponse {
-    devices: Vec<Device>
-}
 
 impl Service {
 
@@ -225,55 +145,5 @@ impl Default for Service {
             http: Client::new(),
             iam: IAM::default(),
         }
-    }
-}
-
-
-
-impl BackendManager {
-
-    pub fn list(&self) -> &Vec<Device> {
-        &self.devices
-    }
-
-    pub fn simulators(&self) -> Vec<&Device> {
-        self.devices
-            .iter()
-            .filter(|b| b.processor_type.is_none())
-            .collect()
-    }
-
-    pub fn real(&self) -> Vec<&Device> {
-        self.devices
-            .iter()
-            .filter(|b| b.processor_type.is_some())
-            .collect()
-    }
-
-    pub fn least_busy(&self) -> Option<&Device> {
-        self.devices
-        .iter()
-        .filter(|d| d.status.name == "online")
-        .min_by_key(|d| d.queue_length)
-        
-    }
-
-}
-
-
-
-impl Display for Device {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Backend: {}, Qubits: {}, Simulator: {}, Status: {}", self.name, self.qubits, self.processor_type.is_none(), self.status.name)
-    }
-}
-
-
-impl Display for BackendManager {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for backend in &self.devices {
-            writeln!(f, "{}", backend)?;
-        }
-        Ok(())
     }
 }
