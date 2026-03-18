@@ -1,19 +1,7 @@
 use crate::api::service::Service;
-use serde::Deserialize;
 use crate::api::job_struct::JobRoot;
 use crate::api::job_struct::ResultRoot;
-
-
-#[derive(Deserialize)]
-pub struct Job {
-    pub id: String,
-    pub backend: String,
-    pub status: String,
-    pub created: String,
-
-    #[serde(default)]
-    pub tags: Vec<String>,
-}
+use crate::api::job_struct::JobListRoot;
 
 
 impl Service {
@@ -21,11 +9,9 @@ impl Service {
 
     // }
 
-    pub async  fn get_job_list(&self) -> Result<String, reqwest::Error>{
-        let response = self.get("https://quantum.cloud.ibm.com/api/v1/jobs/").await?;
-        let response = response.text().await?;
-        println!("job list: {}", response);
-        //let response: Job = response.json().await?;
+    pub async  fn get_job_list(&self) -> Result<JobListRoot, reqwest::Error>{
+        let response = self.get("https://quantum.cloud.ibm.com/api/v1/jobs?fields=id").await?;
+        let response: JobListRoot = response.json().await?;
         Ok(response)
     }
 
