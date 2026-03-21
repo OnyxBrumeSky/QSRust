@@ -15,7 +15,7 @@ use num::complex::Complex32;
 /// - `Z(usize)` : Porte Pauli-Z appliquée à un qubit.
 /// - `CX { control: usize, target: usize }` : Porte CNOT appliquée entre un qubit de contrôle et un qubit cible.
 /// - `U { matrix: DMatrix<Complex32>, target: Vec<usize> }` : Porte unitaire définie par une matrice appliquée à des qubits.
-/// - `MEASURE(Vec<usize>, Vec<usize>)` : Mesure des qubits dans des bits classiques.
+/// - `MEASURE(usize>, usize)` : Mesure des qubits dans des bits classiques.
 /// - `GATE { position: Vec<usize>, instruction: Vec<Box<IStruct>>, label: String }` : Instruction personnalisée appliquée à un circuit.
 /// - `CONTROLLED { controls: Vec<usize>, target: usize, gate: Box<IStruct> }` : Porte contrôlée appliquée à un qubit cible.
 /// - `SWAP { qbit1: usize, qbit2: usize }` : Échange de deux qubits.
@@ -36,9 +36,9 @@ pub enum IStruct {
     GATE { position: Vec<usize>, instruction: Vec<Box<IStruct>>, label: String },
     CONTROLLED { controls: Vec<usize>, target: usize, gate: Box<IStruct> },
     SWAP { qbit1: usize, qbit2: usize },
-    RZ { angle: f32, target: usize },
-    RX { angle: f32, target: usize },
-    RY { angle: f32, target: usize },
+    RZ { angle: f64, target: usize },
+    RX { angle: f64, target: usize },
+    RY { angle: f64, target: usize },
     ANY(),
 }
 

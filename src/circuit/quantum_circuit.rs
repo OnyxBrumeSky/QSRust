@@ -138,7 +138,7 @@ impl QuantumCircuit {
     /// # Arguments
     /// * `angle` - Angle de rotation en radians.
     /// * `target` - Index du qubit cible.
-    pub fn rz(&mut self, angle : f32, target : usize) -> Result<&str, ColoredString>{
+    pub fn rz(&mut self, angle : f64, target : usize) -> Result<&str, ColoredString>{
         if target >= self.qubits {
             Err("tried to apply RZ gate to non existent qbits.\n".red())
         } else {
@@ -148,7 +148,7 @@ impl QuantumCircuit {
     }
 
     /// Applique la porte de rotation RY sur un qubit.
-    pub fn ry(&mut self, angle : f32, target : usize) -> Result<&str, ColoredString>{
+    pub fn ry(&mut self, angle : f64, target : usize) -> Result<&str, ColoredString>{
         if target >= self.qubits {
             Err("tried to apply RY gate to non existent qbits.\n".red())
         } else {
@@ -158,7 +158,7 @@ impl QuantumCircuit {
     }
 
     /// Applique la porte de rotation RX sur un qubit.
-    pub fn rx(&mut self, angle : f32, target : usize) -> Result<&str, ColoredString>{
+    pub fn rx(&mut self, angle : f64, target : usize) -> Result<&str, ColoredString>{
         if target >= self.qubits {
             Err("tried to apply RX gate to non existent qbits.\n".red())
         } else {
