@@ -10,7 +10,7 @@ Rather than simply using existing libraries, this project explores each componen
 
 ## Features
 
-### ⚛️ Quantum Circuit Construction
+### Quantum Circuit Construction
 - Programmatic construction of quantum circuits
 - Support for a **subset of quantum gates**
 - Designed to be modular and extensible
@@ -70,7 +70,7 @@ This includes:
 
 ---
 
-## ⚠️ Limitations
+## Limitations
 
 - Not all quantum gates are implemented  
 - OpenQASM support is partial  
