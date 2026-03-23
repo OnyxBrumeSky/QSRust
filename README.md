@@ -171,4 +171,9 @@ async fn main()-> Result<(), Box<dyn Error>> {
 
 	Ok(())
 }
+```
 
+If you have any questions, feedback, or ideas, feel free to reach out!
+
+- GitHub: https://github.com/OnyxBrumeSky
+- Email: mkhoury@student.42.fr
