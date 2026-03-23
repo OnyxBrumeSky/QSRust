@@ -125,11 +125,11 @@ impl Service {
         &self,
         job: JobRequest,
         poll_interval_secs: u64,
-    ) -> Result<ResultRoot, Box<dyn std::error::Error>> {
+    ) -> Result<(ResultRoot , String), Box<dyn std::error::Error>> {
         let submitted = self.submit_job(job).await?;
         self.wait_for_job(&submitted.id, poll_interval_secs).await?;
         let results = self.get_job_result(&submitted.id).await?;
-        Ok(results)
+        Ok((results, submitted.id.clone()))
     }
 
     /// Retourne la liste paginée des jobs de l'utilisateur.

@@ -94,6 +94,25 @@ impl QuantumCircuit {
         }
     }
 
+    /// Applique la porte CZ  avec le qubit de contrôle et de cible spécifiés.
+    ///
+    /// # Arguments
+    /// * `control` - Index du qubit de contrôle.
+    /// * `target` - Index du qubit cible.
+    ///
+    /// # Erreurs
+    /// Renvoie une erreur si les qubits n'existent pas ou si contrôle = cible.
+    pub fn cz(&mut self, control : usize, target : usize) -> Result<&str, ColoredString>{
+        if control >= self.qubits || target >= self.qubits {
+            Err("tried to apply cx gate to non existent qbits.\n".red())
+        } else if control == target {
+            Err("tried to apply cx gate to same qbits.\n".red())
+        } else {
+            self.instructions.push(IStruct::CZ{control, target});
+            Ok(INSTRUCTION_ADDED)
+        }
+    }
+
     /// Applique la porte Pauli-Y sur le qubit spécifié.
     pub fn y(&mut self, e : usize) -> Result<&str, ColoredString>{
         if e >= self.qubits {
@@ -247,6 +266,7 @@ impl QuantumCircuit {
                 IStruct::Y(qbits) => new_instructions.push(IStruct::Y(mapping[*qbits])),
                 IStruct::Z(qbits) => new_instructions.push(IStruct::Z(mapping[*qbits])),
                 IStruct::CX{control, target} => new_instructions.push(IStruct::CX{control: mapping[*control], target: mapping[*target]}),
+                IStruct::CZ{control, target} => new_instructions.push(IStruct::CZ{control: mapping[*control], target: mapping[*target]}),
                 IStruct::U{matrix, target} => new_instructions.push(IStruct::U{matrix: matrix.clone(), target: target.iter().map(|&x| mapping[x]).collect()}),
                 IStruct::MEASURE(q_bits, cl_bits) => new_instructions.push(IStruct::MEASURE(q_bits.iter().map(|&x| mapping[x]).collect(), cl_bits.clone())),
                 IStruct::GATE{position, instruction, label} => 
@@ -277,6 +297,7 @@ impl QuantumCircuit {
                 IStruct::Y(value) => new.push(IStruct::Y(value + offset)),
                 IStruct::Z(value) => new.push(IStruct::Z(value + offset)),
                 IStruct::CX{control, target} => new.push(IStruct::CX{control :control + offset, target :target + offset}),
+                IStruct::CZ{control, target} => new.push(IStruct::CZ{control :control + offset, target :target + offset}),
                 IStruct::U { matrix, target } => new.push(IStruct::U { matrix: matrix.clone(), target: target.iter().map(|&x| x + offset).collect() }),
                 IStruct::MEASURE(_a, _b) => eprint!("{}","Error : tried to offset a measure instruction.\n".red()),
                 IStruct::GATE{position, instruction, label} => new.push(IStruct::GATE{position: position.iter().map(|&x| x + offset).collect(), instruction: instruction.clone(), label: label.to_string()}),

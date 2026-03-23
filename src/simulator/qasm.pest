@@ -1,0 +1,126 @@
+// ─────────────────────────────────────────────
+//  Whitespace & commentaires (silencieux)
+// ─────────────────────────────────────────────
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT    = _{ "//" ~ (!"\n" ~ ANY)* }
+
+// ─────────────────────────────────────────────
+//  Atomes
+// ─────────────────────────────────────────────
+
+// Identifiant : lettre ou underscore, puis alphanum/underscore
+ident  = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+// Entier non signé
+uint   = @{ ASCII_DIGIT+ }
+
+// Nombre flottant (ex: 3.14, -1.5, .5, 1e-3, pi/2 n'est PAS un float brut)
+float  = @{
+    "-"? ~ (ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? | "." ~ ASCII_DIGIT+)
+    ~ (("e" | "E") ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}
+
+// Constante pi
+pi     = { "pi" }
+
+// ─────────────────────────────────────────────
+//  Expressions d'angle (pour RX, RY, RZ...)
+//  Supporte : 3.14 | pi | pi/2 | pi*2 | -pi/4 | 2*pi/3
+// ─────────────────────────────────────────────
+
+angle_atom = _{ pi | float }
+angle_neg  = { "-" ~ angle_atom }
+angle_div  = { angle_atom ~ "/" ~ uint }
+angle_mul  = { (float | uint) ~ "*" ~ pi }
+angle_expr = { angle_neg | angle_div | angle_mul | angle_atom }
+
+// ─────────────────────────────────────────────
+//  Références de qubits
+//  Forme physique : $0, $1...
+//  Forme registre : q[0], qubit[2]...
+// ─────────────────────────────────────────────
+
+phys_qubit = @{ "$" ~ uint }
+reg_qubit  = { ident ~ "[" ~ uint ~ "]" }
+qubit_ref  = { phys_qubit | reg_qubit }
+
+// Bit classique : c[0]
+clbit_ref  = { ident ~ "[" ~ uint ~ "]" }
+
+// ─────────────────────────────────────────────
+//  Portes à 1 qubit sans paramètre
+// ─────────────────────────────────────────────
+
+gate_h  = { ^"h"  ~ qubit_ref ~ ";" }
+gate_x  = { ^"x"  ~ qubit_ref ~ ";" }
+gate_y  = { ^"y"  ~ qubit_ref ~ ";" }
+gate_z  = { ^"z"  ~ qubit_ref ~ ";" }
+gate_sx = { ^"sx" ~ qubit_ref ~ ";" }
+gate_id = { ^"id" ~ qubit_ref ~ ";" }
+
+// ─────────────────────────────────────────────
+//  Portes à 1 qubit avec 1 paramètre angle
+// ─────────────────────────────────────────────
+
+gate_rx = { ^"rx" ~ "(" ~ angle_expr ~ ")" ~ qubit_ref ~ ";" }
+gate_ry = { ^"ry" ~ "(" ~ angle_expr ~ ")" ~ qubit_ref ~ ";" }
+gate_rz = { ^"rz" ~ "(" ~ angle_expr ~ ")" ~ qubit_ref ~ ";" }
+
+// ─────────────────────────────────────────────
+//  Portes à 2 qubits
+// ─────────────────────────────────────────────
+
+gate_cx   = { ^"cx"   ~ qubit_ref ~ "," ~ qubit_ref ~ ";" }
+gate_cz   = { ^"cz"   ~ qubit_ref ~ "," ~ qubit_ref ~ ";" }
+gate_swap = { ^"swap" ~ qubit_ref ~ "," ~ qubit_ref ~ ";" }
+gate_ecr  = { ^"ecr"  ~ qubit_ref ~ "," ~ qubit_ref ~ ";" }
+
+// ─────────────────────────────────────────────
+//  Mesure
+//  Forme 1 : measure q[0] -> c[0];
+//  Forme 2 : c[0] = measure $0;
+// ─────────────────────────────────────────────
+
+measure_arrow = { ^"measure" ~ qubit_ref ~ "->" ~ clbit_ref ~ ";" }
+measure_eq    = { clbit_ref ~ "=" ~ ^"measure" ~ qubit_ref ~ ";" }
+measure       = { measure_arrow | measure_eq }
+
+// ─────────────────────────────────────────────
+//  Porte custom paramétrée
+//  Ex : mygate(pi/2) $0;  ou  mygate $0, $1;
+// ─────────────────────────────────────────────
+
+gate_params  = { "(" ~ angle_expr ~ ("," ~ angle_expr)* ~ ")" }
+gate_qubits  = { qubit_ref ~ ("," ~ qubit_ref)* }
+gate_custom  = { ident ~ gate_params? ~ gate_qubits ~ ";" }
+
+// ─────────────────────────────────────────────
+//  Déclarations (ignorées pour la simulation)
+// ─────────────────────────────────────────────
+
+decl_qubit  = { (^"qubit" | ^"qreg") ~ ("[" ~ uint ~ "]")? ~ ident? ~ ";" }
+decl_bit    = { (^"bit"   | ^"creg") ~ ("[" ~ uint ~ "]")? ~ ident? ~ ";" }
+decl_gate   = { ^"gate" ~ ident ~ (ident ~ ("," ~ ident)*)? ~ "{" ~ (!("}")  ~ ANY)* ~ "}" }
+include     = { ^"include" ~ "\"" ~ (!("\"") ~ ANY)* ~ "\"" ~ ";" }
+version     = { ^"OPENQASM" ~ (float | uint) ~ ";" }
+
+// ─────────────────────────────────────────────
+//  Instruction — ordre important (plus spécifique en premier)
+// ─────────────────────────────────────────────
+
+instruction = {
+    gate_rx | gate_ry | gate_rz |
+    gate_sx | gate_id |
+    gate_h  | gate_x  | gate_y  | gate_z  |
+    gate_cx | gate_cz | gate_swap | gate_ecr |
+    measure |
+    gate_custom
+}
+
+// ─────────────────────────────────────────────
+//  Programme complet
+// ─────────────────────────────────────────────
+
+statement = _{ version | include | decl_gate | decl_qubit | decl_bit | instruction }
+program   =  { SOI ~ statement* ~ EOI }

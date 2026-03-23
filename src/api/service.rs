@@ -82,6 +82,8 @@ impl ServiceBuilder {
         self
     }
 
+
+
     /// Construit le [`Service`] en s'authentifiant auprès de l'IAM IBM Cloud.
     ///
     /// Effectue deux appels réseau :
@@ -147,6 +149,58 @@ impl Service {
             region:   None,
         }
     }
+
+
+
+    /// Renouvelle le token IAM depuis la clé API stockée.
+    ///
+    /// Appelle `POST https://iam.cloud.ibm.com/identity/token` avec la clé API
+    /// et retourne un nouveau [`IAM`] avec un token Bearer frais.
+    async fn get_iam(&self) -> Result<IAM, Box<dyn Error>> {
+        let param = [
+            ("grant_type", "urn:ibm:params:oauth:grant-type:apikey"),
+            ("apikey", self._token.as_str()),
+        ];
+
+        let response = self.http
+            .post("https://iam.cloud.ibm.com/identity/token")
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .form(&param)
+            .send()
+            .await?
+            .json::<IAM>()
+            .await?;
+
+        Ok(response)
+    }
+
+    /// Vérifie si le token IAM est encore valide et le renouvelle si nécessaire.
+    ///
+    /// Effectue une requête légère vers l'API IBM Cloud. Si la réponse est
+    /// un **401 Unauthorized**, le token est expiré et un nouveau est obtenu
+    /// automatiquement via [`get_iam`](Service::get_iam).
+    ///
+    /// À appeler avant chaque série de requêtes longues ou au démarrage.
+    ///
+    /// # Exemple
+    /// ```rust
+    /// service.refresh_token_if_needed().await?;
+    /// let result = service.run_and_collect(job, 5).await?;
+    /// ```
+    pub async fn refresh_token_if_needed(&mut self) -> Result<(), Box<dyn Error>> {
+        let response = self.http
+            .get("https://resource-controller.cloud.ibm.com/v2/resource_instances")
+            .bearer_auth(&self.iam.access_token)
+            .send()
+            .await?;
+
+        if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+            let new_iam = self.get_iam().await?;
+            self.iam = new_iam;
+        }
+        Ok(())
+    }
+
 
     /// Effectue une requête `GET` authentifiée vers l'API IBM Quantum.
     ///

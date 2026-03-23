@@ -148,6 +148,9 @@ pub fn decompose_swap(q1: usize, q2: usize) -> Vec<DecomposedGate> {
 }
 
 /// Décompose `CZ` en `H(t) · CX(c,t) · H(t)`.
+///
+/// `CZ` n'est pas une porte primitive de [`DecomposedGate`] — elle est toujours
+/// réduite à une séquence `H · CX · H` avant le placement et le routing.
 pub fn decompose_cz(control: usize, target: usize) -> Vec<DecomposedGate> {
     let mut g = decompose_h(target);
     g.push(cx(control, target));
@@ -211,6 +214,8 @@ pub fn decompose(instructions: &[IStruct]) -> Vec<DecomposedGate> {
             IStruct::Y(q)                           => decompose_y(*q),
             IStruct::Z(q)                           => decompose_z(*q),
             IStruct::CX { control, target }         => vec![cx(*control, *target)],
+            // ✅ CZ décomposé en H · CX · H
+            IStruct::CZ { control, target }         => decompose_cz(*control, *target),
             IStruct::SWAP { qbit1, qbit2 }          => decompose_swap(*qbit1, *qbit2),
             IStruct::RZ { angle, target }           => decompose_rz(*angle, *target),
             IStruct::RX { angle, target }           => decompose_rx(*angle, *target),

@@ -31,6 +31,7 @@ pub enum IStruct {
     Y(usize),
     Z(usize),
     CX { control: usize, target: usize },
+    CZ { control: usize, target: usize },
     U { matrix: DMatrix<Complex32>, target: Vec<usize> },
     MEASURE(Vec<usize>, Vec<usize>),
     GATE { position: Vec<usize>, instruction: Vec<Box<IStruct>>, label: String },
@@ -57,6 +58,9 @@ impl fmt::Display for IStruct {
             }
             IStruct::CX { control, target } => {
                 write!(f, "CX gate is applied to the control qbit {:?} and target qbit {:?}", control, target)
+            }
+            IStruct::CZ { control, target } => {
+                write!(f, "CZ gate is applied to the control qbit {:?} and target qbit {:?}", control, target)
             }
             IStruct::Y(qbits) => {
                 write!(f, "Y gate is applied to the qbit(s) {:?}", qbits)

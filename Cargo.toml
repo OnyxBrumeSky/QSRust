@@ -1,5 +1,6 @@
 [package]
-name = "qc"
+name = "rusty-quantum"
+description = "A Rust library for quantum computing mimicking the functionality of Qiskit."
 version = "0.1.0"
 edition = "2021"
 
@@ -15,3 +16,7 @@ serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 base64 = "0.22.1"
 flate2 = "1"
+pest = "2.8.6"
+pest_derive = "2.8.6"
+num-complex = "0.4"
+rand = "0.8"

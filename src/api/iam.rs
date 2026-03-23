@@ -10,11 +10,11 @@ pub struct IAM {
     /// Token Bearer à inclure dans les headers des requêtes API
     pub access_token: String,
     /// Token permettant de renouveler l'accès sans se réauthentifier
-    refresh_token: String,
+    pub refresh_token: String,
     /// Durée de validité du token en secondes
-    expires_in: u64,
+    pub expires_in: u64,
     /// Timestamp Unix d'expiration du token
-    expiration: u64,
+    pub expiration: u64,
 }
 
 impl Default for IAM {
