@@ -70,10 +70,6 @@ impl StatevectorResult {
     }
 }
 
-// ─────────────────────────────────────────────
-//  Simulateur statevector
-// ─────────────────────────────────────────────
-
 /// Simule un circuit quantique en représentation statevector.
 ///
 /// Le statevector est un vecteur de `2ⁿ` amplitudes complexes.
@@ -160,10 +156,6 @@ pub fn simulate_statevector(
     Ok(StatevectorResult { amplitudes: state, n_qubits })
 }
 
-// ─────────────────────────────────────────────
-//  Application de portes
-// ─────────────────────────────────────────────
-
 /// Applique une porte 1-qubit `mat` (2×2) au qubit `q` du statevector.
 ///
 /// Itère sur tous les états de base par paires `(|...0...⟩, |...1...⟩)` au bit `q`.
@@ -248,9 +240,6 @@ fn apply_controlled(
     }
 }
 
-// ─────────────────────────────────────────────
-//  Matrices des portes standard
-// ─────────────────────────────────────────────
 
 fn c(re: f64, im: f64) -> C { C::new(re, im) }
 
@@ -295,9 +284,6 @@ fn gate_rz(theta: f64) -> [[C; 2]; 2] {
      [c(0.0, 0.0),                    c(half.cos(), half.sin())]]
 }
 
-// ─────────────────────────────────────────────
-//  Utilitaires
-// ─────────────────────────────────────────────
 
 /// Extrait une matrice 2×2 depuis une `DMatrix<Complex32>`.
 fn extract_2x2(matrix: &nalgebra::DMatrix<num_complex::Complex<f32>>) -> Result<[[C; 2]; 2], String> {
